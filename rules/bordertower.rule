@@ -1,0 +1,26 @@
+/*Border Tower*/
+
+include(glass_window.rule, w3);
+
+BorderTowerLot = rect(-10, -10, 10, 10);
+BorderTowerLot --> extrude(14){BorderTower};
+
+BorderTower -->  add_texture("wall", "brick.jpg", 7, 3){BorderTowerT};
+BorderTowerT --> subdiv(8, 2, 70, 20){BorderTowerBase | BorderTowerTilt | BorderTowerBody | BorderTowerRoof};
+
+BorderTowerBase --> insert_cylinder(0.525, 0.525, 1, 32);
+BorderTowerTilt --> insert_cylinder(0.525, 0.5, 1, 32);
+BorderTowerRoof --> scale(1.05, 1.05, 1){BorderTowerRoofS};
+BorderTowerRoofS --> insert("round_tower_head.obj", 1, 1);
+
+BorderTowerBody --> comp(32){BorderTowerTop | BorderTowerFace};
+
+BorderTowerFace --> [0.8]subdiv(100){BTWall}, 
+[0.2] repeat_subdiv(3, 10, 80, 10){BTWall | BorderTowerFaceFloor | BTWall}
+;
+
+BorderTowerFaceFloor --> split(10, 80, 10){BTWall | BTWindow | BTWall};
+BTWindow --> scale(1, 0.2, 1){BTWindowS};
+BTWindowS --> insert("w3.obj", 0);
+BTWall --> insert("plain_empty_rect.obj", 0);
+

@@ -1,0 +1,388 @@
+%{
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <map>
+#include <vector>
+#include <time.h>
+#include "component.h"
+
+std::map<std::string, float> attr_map;
+std::vector<float> arg_vector[2];
+std::vector<std::string> succ_vector;
+std::vector<Successor> stochastic_vector;
+std::vector<float> probabilities;
+std::map<std::string, std::vector<Component> > comp_map;
+std::map<std::string, Component> lot_map;
+extern std::vector<std::string> errors;
+extern int yylex();
+extern int line_number;
+extern std::string DATA_DIR;
+extern std::string HOME;
+
+int yyerror(char *s){
+	printf("%s\n", s);
+	return 0;
+}
+%}
+%union {
+	char* sym;
+	float val;
+};
+
+%token <sym> INCLUDE VALUE END LITERAL ATTR EQUALS ATOM VARIABLE TRANSFORM LP RP LCP RCP DQ LBP RBP
+%type <sym> RuleExp Literals
+%type <val> Variable Variables
+
+%start Input
+
+%%
+
+Input :
+	| Input Line
+;
+
+Line :
+	END 
+	| Expression END {line_number++;}
+	| error Expression END {
+	    char err[256];
+	    sprintf(err, "SYNTAX ERROR : Incorrect Syntax Encountered! \t\t\t\t\t\t Rule #%d", line_number);
+	    errors.push_back(std::string(err));
+	}
+;
+
+Expression : 
+	ATTR AttrExpression {}
+	| INCLUDE IncludeExpression {}
+	| RuleExp {}
+;
+
+IncludeExpression : /*1st Rule File, 2nd .obj output file name*/
+    LP VARIABLE VARIABLE RP  {
+	char command[256];
+	sprintf(command, "cd %s; ./builder rules/%s %s; mv %s.obj %s.mtl ./models/; cd - ", HOME.c_str(), $2, $3, $3, $3);
+	printf("Now executing command : %s\n", command);
+	system(command);
+    }
+;
+
+AttrExpression : 
+	VARIABLE EQUALS VALUE {attr_map[std::string($1)] = atof($3);}
+	| VARIABLE EQUALS VARIABLE LP VALUE VALUE RP {attr_map[std::string($1)] = ((float)rand()/RAND_MAX) * (atof($6) - atof($5)) + atof($5); }
+;
+
+RuleExp : 
+	LITERAL EQUALS FuncExp {
+		Component c;
+		c.children = stochastic_vector;
+		stochastic_vector.clear();
+		lot_map.insert(make_pair(std::string($1), c));
+	}
+	| LITERAL TRANSFORM FuncExp {
+		Component c;
+		c.children = stochastic_vector;
+		stochastic_vector.clear();
+		c.weights.push_back(1.0);
+		comp_map[std::string($1)].push_back(c);
+	}
+	| LITERAL TRANSFORM ProbFuncExp {
+		Component c;
+		c.children = stochastic_vector;
+		stochastic_vector.clear();
+		reverse(probabilities.begin(), probabilities.end());
+		c.weights = probabilities;
+		probabilities.clear();
+		comp_map[std::string($1)].push_back(c);
+	}
+;
+
+ProbFuncExp :
+	LBP VALUE RBP FuncExp {probabilities.push_back(atof($2));}
+	| LBP VALUE RBP FuncExp ProbFuncExp {probabilities.push_back(atof($2));}
+;
+
+FuncExp :
+	VARIABLE LP Variables RP {
+		Successor S;
+		if(std::string($1) == "circ"){
+			S.rule = CIRC;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to CIRC! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "rect"){
+			S.rule = RECT;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 4){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to RECT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert") {
+			S.rule = INSERT;
+			if(succ_vector.size() != 1 || arg_vector[0].size() < 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_cone"){
+			S.rule = CONE_ROOF;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT CONE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_cylinder"){
+			S.rule = CYLINDER;
+			if(succ_vector.size() > 1 || arg_vector[0].size() != 4){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT CYLINDER! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_round_door"){
+			S.rule = ROUND_DOOR;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 4){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT ROUND DOOR! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_parabolic_cone"){
+			S.rule = PAR_CONE_ROOF;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 4){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT PARABOLIC CONE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_volume"){
+			S.rule = VOLUME;
+			if(succ_vector.size() > 1 || arg_vector[0].size() != 6){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT VOLUME! \t\t\t\t\t\t Rule #%d\n\t Expected Arguments : relative length[float], relative width[float], relative height[float], x-elevation[float], y-elevation[float], visibility[int, 0-1]", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else {
+		    char err[256];
+		    sprintf(err, "PARSER ERROR : Incorrect funtion name in Lot/Terminal Rule! \t\t\t\t\t\t Rule #%d", line_number);
+		    errors.push_back(std::string(err));
+		}
+			
+		S.names = succ_vector;
+		succ_vector.clear();
+		S.args[0] = arg_vector[0];
+		S.args[1] = arg_vector[1];
+		arg_vector[0].clear();
+		arg_vector[1].clear();
+		stochastic_vector.push_back(S);
+	}
+	| VARIABLE LP Variables RP LCP Literals RCP {
+		Successor S;
+		if(std::string($1) == "lot_split_simple"){
+			S.rule = LOT_SPLIT_SIMPLE;
+			if(succ_vector.size() < 1 || arg_vector[0].size() != 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to SIMPLE LOT SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "lot_split_rand"){
+			S.rule = LOT_SPLIT_RAND;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to RANDOM LOT SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "lot_split"){
+			S.rule = LOT_SPLIT;
+			if(succ_vector.size() < 1 || arg_vector[0].size() < 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to LOT SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "translate"){
+			S.rule = TRANSLATE;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to TRANSLATE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "translate_lot") {
+			S.rule = TRANSLATE_LOT;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to LOT TRANSLATE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "scale"){
+			S.rule = SCALE;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to SCALE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "rotate"){
+			S.rule = ROTATE;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to ROTATE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "center"){
+			S.rule = CENTER;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to CENTER! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "corners") {
+			S.rule = CORNERS;
+			if(succ_vector.size() < 1 || arg_vector[0].size() != 6){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to CORNERS! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "edges"){
+			S.rule = EDGES;
+			if(succ_vector.size() < 1 || arg_vector[0].size() != 6){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to EDGES! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "extrude"){
+			S.rule = EXTRUDE;
+			if(succ_vector.size() != 1 || arg_vector[0].size() != 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to EXTRUDE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "comp") {
+			S.rule = COMP_SPLIT;
+			if(succ_vector.size() < 2 || arg_vector[0].size() != 1 || arg_vector[0][0] < 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to COMPONENT SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "subdiv"){
+			S.rule = SUBDIVIDE;
+			if(succ_vector.size() < 1 || arg_vector[0].size() < 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to SUBDIVIDE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "uniform_subdiv"){
+			S.rule = UNIFORM_SUBDIVIDE;
+			if(succ_vector.size() < 1 || arg_vector[0].size() != 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to UNIFORM SUBDIVIDE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "repeat_subdiv"){
+			S.rule = REPEAT_SUBDIVIDE;
+			if(succ_vector.size() < 2 || arg_vector[0].size() < 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to REPEAT SUBDIVIDE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "split"){
+			S.rule = SPLIT;
+			if(succ_vector.size() < 1 || arg_vector[0].size() < 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "uniform_split"){
+			S.rule = UNIFORM_SPLIT; 
+			if(succ_vector.size() < 1 || arg_vector[0].size() != 1){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to UNIFORM SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "repeat_split"){
+			S.rule = REPEAT_SPLIT;
+			if(succ_vector.size() < 2 || arg_vector[0].size() < 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to REPEAT SPLIT! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_cone"){
+			S.rule = CONE_ROOF;
+			if(succ_vector.size() > 0 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT CONE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_cylinder"){
+			S.rule = CYLINDER;
+			if(succ_vector.size() > 1 || arg_vector[0].size() != 4){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT CYLINDER! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "insert_volume"){
+			S.rule = VOLUME;
+			if(succ_vector.size() > 1 || arg_vector[0].size() != 6){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to INSERT VOLUME! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "add_material"){
+			S.rule = ADD_MATERIAL;
+			if(succ_vector.size() != 2 || arg_vector[0].size() != 3){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to ADD MATERIAL! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else if(std::string($1) == "add_texture"){
+			S.rule = ADD_TEXTURE;
+			if(succ_vector.size() != 3 || arg_vector[0].size() != 2){
+			    char err[256];
+			    sprintf(err, "PARSER ERROR : Incorrect arguments passed to ADD TEXTURE! \t\t\t\t\t\t Rule #%d", line_number);
+			    errors.push_back(std::string(err));
+			}
+		} else {
+		    char err[256];
+		    sprintf(err, "PARSER ERROR : Incorrect function name in Transformation Rule! \t\t\t\t\t\t Rule #%d", line_number);
+		    errors.push_back(std::string(err));
+		}
+		S.args[0] = arg_vector[0];
+		S.args[1] = arg_vector[1];
+		arg_vector[0].clear();
+		arg_vector[1].clear();
+		S.names = succ_vector;
+		succ_vector.clear();
+		stochastic_vector.push_back(S);
+	}
+;
+
+Literals : 
+	Literals LITERAL {succ_vector.push_back(std::string($2));}
+	| LITERAL {succ_vector.push_back(std::string($1));}
+;
+
+Variables : {/*empty*/}
+	| Variables Variable {}
+;
+
+Variable : 
+	VARIABLE LP VALUE VALUE RP {
+		if(std::string($1) == "rand"){
+			arg_vector[0].push_back(atof($3));
+			arg_vector[1].push_back(atof($4));
+		}
+	} 
+	| VARIABLE {
+		float val = attr_map[std::string($1)]; 
+		arg_vector[0].push_back(val);
+		arg_vector[1].push_back(val);
+	}
+	| VALUE {
+		float val = atof($1); 
+		arg_vector[0].push_back(val);
+		arg_vector[1].push_back(val);
+	}
+	| DQ VARIABLE DQ {
+		succ_vector.push_back(std::string($2));
+	}
+;
+
+%%
+

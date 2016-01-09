@@ -1,0 +1,7 @@
+/*Glass window*/
+
+Lot = rect(-0.5, 0, 0.5, 0.2);
+Lot --> extrude(2){Window};
+Window --> uniform_split(rand(1, 5)){W1};
+W1 --> uniform_subdiv(rand(2, 6)){W};
+W --> insert("square_window.obj", 1);

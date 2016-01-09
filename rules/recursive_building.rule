@@ -1,0 +1,66 @@
+/*Building rule*/
+
+include(glass_window.rule, w1);
+include(glass_window.rule, w2);
+
+Lot = rect(-40, 10, 40, 80);
+
+InnerLot --> extrude(1){InnerTop};
+InnerTop --> comp(4){InnerTopTop | InnerTopWall};
+InnerTopWall --> scale(1, 0.1, 0.2){InnerTopWallS};
+InnerTopWallS --> insert("short_wall.obj", 1);
+
+InnerTop --> 
+[0.5] add_texture("roof", "roof6.jpg", 2, 1){InnerTopT},
+[0.5] add_texture("roof", "slate.png", 2, 1){InnerTopT}
+;
+
+InnerTopT --> 
+[0.33] insert_volume(1, 1, rand(0.5, 0.8), 1, 1, 1), 
+[0.33] insert_volume(1, 1, rand(0.5, 0.8), 0, 1, 1),
+[0.34] insert_volume(1, 1, rand(0.5, 0.8), 1, 0, 1);
+
+Lot --> extrude(50){Building};
+Building --> comp(4){BuildingTop | BuildingFront | BuildingSide | BuildingSide | BuildingSide };
+
+BuildingTop --> [0.36] extrude(1){BuildingTopE},
+[0.64] lot_split_simple(rand(0.4, 0.6), rand(0.4, 0.6)){InnerLot};
+
+BuildingTopE --> comp(4){BuildingTop | BuildingSide};
+
+
+BuildingFront --> subdiv(75, 25){BuildingFrontBottom | BuildingFrontTop};
+BuildingFrontTop --> uniform_subdiv(1){BuildingSideFloor};
+BuildingSide --> uniform_subdiv(4){BuildingSideFloor};
+
+BuildingSideFloor --> 
+[0.5] uniform_split(10){BuildingWindow1},
+[0.5] uniform_split(10){BuildingWindow2}
+;
+
+BuildingWindow1 --> subdiv(20, 60, 20){Wall | BuildingWindow1M | Wall};
+BuildingWindow1M --> 
+[0.5] split(25, 50, 25){Wall | Window1 | Wall},
+[0.5] split(100){Wall};
+BuildingWindow2 --> subdiv(20, 60, 20){Wall | BuildingWindow2M | Wall};
+BuildingWindow2M --> 
+[0.5] split(25, 50, 25){Wall | Window2 | Wall},
+[0.5] split(100){Wall};
+BuildingFrontBottom --> split(30, 40, 30)
+{Wall | BuildingFrontEntrance | Wall};
+
+BuildingFrontEntrance --> scale(1, 0.4, 1){
+BuildingFrontEntranceS};
+
+BuildingFrontEntranceS --> translate(0, -0.2, 0){BuildingFrontEntranceTr};
+
+BuildingFrontEntranceTr --> insert("entrance.obj", 1);
+
+Wall --> 
+[0.99] add_texture("wall", "cwall4.jpg", 16, 4){WallT},
+[0.01] add_texture("wall", "bigstone.jpg", 16, 4){WallT};
+WallT --> insert("plain_empty_rect.obj", 0);
+
+Window1 --> insert("w1.obj", 0);
+Window2 --> insert("w2.obj", 0);
+

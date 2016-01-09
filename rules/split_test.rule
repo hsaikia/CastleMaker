@@ -1,0 +1,21 @@
+/*Split test*/
+
+L = rect(0, 0, 10, 10);
+
+L --> extrude(10){B};
+
+B --> comp(4){Tt | F};
+
+F --> uniform_subdiv(20){C};
+
+C --> split(20, 60, 20){Ct, D, Ct};
+
+D --> [0.5] uniform_split(20){Ct},
+[0.5] uniform_split(1){N};
+
+N --> uniform_split(10){T};
+
+T --> split(30, 40, 30){Ct | R | Ct};
+
+Ct --> add_texture("what", "brick.jpg", 20, 5){Ctt};
+Ctt --> insert("plain_empty_rect.obj", 0, 1, 0);

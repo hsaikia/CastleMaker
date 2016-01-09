@@ -1,0 +1,94 @@
+/*Includes*/
+
+include(bordertower.rule, bordertower);
+
+include(recursive_building.rule, building);
+include(recursive_tower.rule, tower);
+
+/*Border*/
+
+BorderLot1 = rect(-105, -105, 105, 105);
+
+Building = rect(-40, 10, 40, 80);
+Building --> insert("building.obj", 1, 0, 1);
+
+SlightlyOffsetLot = rect(-42, 12, 42, 82);
+SlightlyOffsetLot --> 
+
+[0.4]corners(0.7, 0.7, 1, 1, 1, 1){Tower}
+[0.2]corners(0.7, 0.7, 1, 0, 0, 1){Tower},
+[0.2]corners(0.7, 0.7, 1, 1, 0, 0){Tower},
+[0.2]corners(0.7, 0.7, 0, 0, 1, 1){Tower};
+Tower --> insert("tower.obj", 1, 0, 1);
+
+BorderLot --> corners(0.3, 0.3, 0, 1, 1, 0){Tower};
+
+/*-------------------*/
+
+BorderLot --> 
+[0.01] edges(0.1, 0.1, 0, 0, 0, 0){BorderHouseLot1 | BorderHouseLot2 | BorderHouseLot1 | BorderHouseLot2},
+[0.99] edges(0.1, 0.1, 15, 15, 15, 15){BorderHouseLot1 | BorderHouseLot2 | BorderHouseLot1 | BorderHouseLot2};
+
+BorderLot --> edges(0.1, 0.1, 0, 0, 0, 1){Empty | Empty | Empty | Entrance};
+
+Entrance --> translate(0, -0.3, 0){EntranceT};
+EntranceT --> extrude(15){EntranceE};
+EntranceE --> comp(4){EntranceTop | EntranceSide | Wall |  Wall | Wall};
+EntranceSide --> scale(1, 0.4, 1){EntranceSideS};
+EntranceSideS --> insert("gate.obj", 1, 1, 0);
+EntranceTop --> scale(1, 1, 0.5){EntranceTopS}; EntranceTopS --> insert("house_roof_bordered.obj", 1, 1);
+
+
+BorderHouseLot1 --> scale(0.14, 0.42, 1){BorderHouseLot1S};
+BorderHouseLot2 --> scale(0.42, 0.14, 1){BorderHouseLot2S};
+
+BorderHouseLot1S --> extrude(14){BorderHouse1};
+BorderHouseLot2S --> extrude(14){BorderHouse2};
+
+BorderHouseLot1S --> corners(1.35, 1.3, 1, 1, 1, 1){BorderHousePillarLot};
+BorderHouseLot2S --> corners(1.3, 1.35, 1, 1, 1, 1){BorderHousePillarLot};
+
+BorderHousePillarLot --> extrude(16){BorderHousePillar};
+
+BorderHousePillar --> subdiv(90, 10){BorderHousePillarBase | BorderHousePillarRoof};
+
+BorderHousePillarBase --> add_texture("wall", "cwall4.jpg", 0.5, 1.5){BorderHousePillarBaseT};
+BorderHousePillarBaseT --> insert_volume(1, 1, 1, 0, 0, 1);
+BorderHousePillarRoof --> insert("square_tower_head.obj", 1, 1);
+
+EntranceT --> corners(0.4, 0.4, 1, 1, 1, 1){EntranceTower};
+EntranceTower --> extrude(20){EntranceTowerE};
+EntranceTowerE --> subdiv(90, 10){EntranceTowerBase | EntranceTowerRoof};
+
+EntranceTowerBase --> 
+[0.25] add_texture("wall", "cwall4.jpg", 1, 2){EntranceTowerBaseT},
+[0.25] add_texture("wall", "bigstone.jpg", 1, 2){EntranceTowerBaseT},
+[0.25] add_texture("wall", "stone5.jpg", 1, 2){EntranceTowerBaseT},
+[0.25] add_texture("wall", "brick_rough.jpg", 1, 2){EntranceTowerBaseT};
+
+EntranceTowerBaseT --> insert_volume(1, 1, 1, 0, 0, 1);
+EntranceTowerRoof --> insert("square_tower_head.obj", 1, 1);
+
+BorderHouse1 --> comp(4){BorderHouseTop | Wall | StochasticBorderHouseFace | Wall | StochasticBorderHouseFace};
+BorderHouse2 --> comp(4){BorderHouseTop | StochasticBorderHouseFace | Wall | StochasticBorderHouseFace | Wall};
+StochasticBorderHouseFace -->
+[0.8] subdiv(30, 40, 30){Wall | BorderWindowFace | Wall},
+[0.2] subdiv(80, 20) {BorderDoorFace | Wall}
+;
+
+BorderHouseTop --> add_texture("wall", "cwall4.jpg", 3, 5){BorderHouseTopT};
+BorderHouseTopT --> insert_volume(1, 1, 0.01, 0, 0, 1);
+
+BorderWindowFace --> split(30, 40, 30){Wall | NormalWindow | Wall};
+NormalWindow --> insert("square_window.obj", 0);
+BorderDoorFace --> split(20, 60, 20){Wall | Door | Wall};
+Door --> insert("wooden_door.obj", 1, 1);
+
+Wall --> add_texture("wall", "cwall4.jpg", 4, 2){WallT};
+WallT --> insert("plain_empty_rect.obj", 0);
+
+
+/*Border Tower*/
+BorderLot --> corners(0.1, 0.1, 1, 0, 0, 1){BorderTowerLot};
+BorderTowerLot --> extrude(rand(16, 19)){BorderTower};
+BorderTower --> insert("bordertower.obj", 1, 0);

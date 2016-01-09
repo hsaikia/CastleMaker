@@ -1,0 +1,42 @@
+/*Tower*/
+
+include(glass_window.rule, w4);
+
+attr size = rand(15, 25);
+Lot = rect(0, 0, size, size);
+Lot --> extrude(20){TowerBase};
+TowerBaseTop --> extrude(1.5){TowerTop};
+TowerTop --> subdiv(70, 8, 22){TowerRoof | TowerOutpost | TowerRoofTop};
+
+/*Tower Roof*/
+
+TowerRoof --> 
+[0.5] add_texture("roof", "slate.png", 3, 3){TowerRoofT},
+[0.5] add_texture("roof", "roof6.jpg", 3, 3){TowerRoofT};
+
+TowerRoofT --> insert_cylinder(0.55, 0.1, 1, 32);
+TowerOutpost --> scale(0.15, 0.15, 1){TowerOutpostS};
+TowerOutpostS --> comp(8){TowerOutpostTop | TowerOutpostFace};
+TowerOutpostFace --> add_material("gray", 0.2, 0.2, 0.2){SquareWindow};
+TowerRoofTop --> scale(0.15, 0.15, 1){TowerRoofTopS};
+TowerRoofTopS --> insert("roof_tower_head.obj", 1, 0, 0);
+
+/*Tower Base*/
+
+TowerBase --> subdiv(3, 4, 3, 90){Ring | Nothing};
+Ring --> add_material("gray", 0.1, 0.1, 0.1){RingT};
+RingT --> insert_cylinder(0.5125, 0.5125, 1, 32);
+TowerBase --> 
+[0.6]comp(32){TowerBaseTop | TowerBaseFace},
+[0.4]comp(32){TowerBase | TowerBaseFace};
+
+TowerBaseFace --> [0.8]subdiv(100){Wall}, 
+[0.2] repeat_subdiv(3, 10, 90){Wall | TowerBaseFaceFloor}
+;
+
+TowerBaseFaceFloor --> subdiv(25, 50, 25){Wall | Window | Wall};
+
+Window --> insert("w4.obj", 0);
+SquareWindow --> insert("square_window.obj", 0);
+Wall --> add_texture("wall", "brick_rough.jpg", 14, 3){WallT};
+WallT --> insert("plain_empty_rect.obj", 0);

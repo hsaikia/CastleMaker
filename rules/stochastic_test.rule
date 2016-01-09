@@ -1,0 +1,37 @@
+/*Hello*/
+
+include(glass_window.rule, window);
+
+Lot = rect(-10, -10, 10, 10);
+
+Lot --> extrude(20){A};
+
+A --> comp(4){T | B};
+
+T --> add_material("gray3", 0.6, 0.6, 0.6){Tt};
+
+Tt --> insert_volume(1, 1, 1, 1, 1, 1);
+B --> uniform_subdiv(5){W | W1 | W | W1 | W};
+W1 --> uniform_split(5){W | W2 | W | W2 | W};
+W2 --> insert("window.obj", 1);
+W --> insert("plain_empty_rect.obj", 0);
+
+Lot -->
+[0.5] corners(0.15, 0.15, 1, 1, 1, 1){C1},
+[0.5] corners(0.15, 0.15, 1, 1, 1, 1){C2}
+;
+
+C1 --> extrude(22){D1};
+D1 --> subdiv(80, 20){E1, F1};
+E1 --> add_material("gray2", 0.5, 0.5, 0.5){E1t};
+E1t --> insert_cylinder(1, 1, 1, 20);
+F1 --> add_material("gray1", 0.2, 0.2, 0.2){F1t};
+F1t --> insert_parabolic_cone(1.2, 1, 20, 20);
+
+C2 --> extrude(22){D2};
+D2 --> subdiv(80, 20){E2, F2};
+E2 --> add_material("gray2", 0.5, 0.5, 0.5){E2t};
+E2t --> insert_volume(1, 1, 1, 0, 0, 1);
+F2 --> add_material("gray1", 0.2, 0.2, 0.2){F2t};
+
+F2t --> insert_volume(1.2, 1.2, 1, 0, 0, 1);
